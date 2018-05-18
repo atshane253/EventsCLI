@@ -6,40 +6,39 @@ namespace EventsCLI
 {
     public class Watcher
     {
-        EventLogQuery query;
+        bool PrintXML = true;
         EventLogWatcher watch;
-        EventRecord last;
-        const string queryString ="<QueryList><Query Id=\"0\" Path=\"Application\"><Select Path=\"Application\">*</Select><Select Path=\"System\">*</Select></Query></QueryList>";
 
-        public Watcher(string text = queryString)
+        public Watcher(string text = "<QueryList><Query Id=\"0\" Path=\"Application\"><Select Path=\"Application\">*</Select><Select Path=\"System\">*</Select></Query></QueryList>")
         {
-            query = new EventLogQuery("Application", PathType.LogName, text);
-            watch = new EventLogWatcher(query);
+            watch = new EventLogWatcher(new EventLogQuery("Application", PathType.LogName, text));
         }
 
         public Watcher(string text, string server)
         {
-            query = new EventLogQuery("Application", PathType.LogName, text);
-            query.Session = new EventLogSession(server);
-            watch = new EventLogWatcher(query);
+            watch = new EventLogWatcher(new EventLogQuery("Application", PathType.LogName, text) { Session = new EventLogSession(server) });
         }
-
+        
         public void StartWatch()
         {
             watch.Enabled = true;
             watch.EventRecordWritten += Watch_EventRecordWritten;
         }
 
-        private void Watch_EventRecordWritten(object sender, EventRecordWrittenEventArgs e)
+        public void EndWatch()
         {
-            last = e.EventRecord;
-            Console.WriteLine(last.FormatDescription());
+            watch.Enabled = false;
+            watch.EventRecordWritten -= Watch_EventRecordWritten;
         }
 
-        public void WriteLastXML()
+        public void ToggleXML() => PrintXML = !PrintXML;
+
+        private void Watch_EventRecordWritten(object sender, EventRecordWrittenEventArgs e)
         {
-            if (last != null)
-                Console.WriteLine(XDocument.Parse(last.ToXml()));            
+            var last = e.EventRecord;
+            Console.WriteLine(last.FormatDescription());
+            if (PrintXML)
+                Console.WriteLine(XDocument.Parse(last.ToXml()));    
         }
     }
 }
